@@ -4,6 +4,7 @@ import hashlib
 import os
 import re
 import requests
+import sys
 import time
 
 # IP address of router interface to login to
@@ -127,9 +128,14 @@ if __name__ == "__main__":
 
     parser.add_argument('-l', '--loop', action='store_true', help='Loop over status checks, otherwise one-shot')
     parser.add_argument('-d', '--delay', type=int, default=60, help='Delay between queries when looping')
+    parser.add_argument('-f', '--log', type=argparse.FileType('w'), help='Output status to log instead of stdout')
     args = parser.parse_args()
 
-    print(f"time,{",".join(diag_fields)}")
+    log_out = sys.stdout
+    if hasattr(args, "log"):
+        log_out = args.log
+
+    print(f"time,{",".join(diag_fields)}", file=log_out)
     
     # get token to use in password hash
     if (token := get_router_token( s=session, url=urls['login'])) is not None:
@@ -141,12 +147,14 @@ if __name__ == "__main__":
             while True:
                 # get current stats
                 signal_diags = query_page( s=session, url=urls['diag'], fields=diag_fields )
-                print(f"{time.time()},", end="")
+
+                status_line = time.time()
                 for k in diag_fields:
                     v = signal_diags[k] if k in signal_diags else ""
-                    print(f"\"{v}\",", end="")
-                print()
-                
+                    status_line = f"{status_line},\"{v}\""
+                print(status_line, file=log_out)
+                log_out.flush()
+
                 if not args.loop:
                     break
                 else:
