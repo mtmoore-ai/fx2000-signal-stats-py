@@ -35,7 +35,6 @@ diag_fields = [
                "internetStatusSNR" 
               ]
 
-print(f"time,{",".join(diag_fields)}")
 
 # start session
 session = requests.Session()
@@ -130,12 +129,15 @@ if __name__ == "__main__":
     parser.add_argument('-d', '--delay', type=int, default=60, help='Delay between queries when looping')
     args = parser.parse_args()
 
+    print(f"time,{",".join(diag_fields)}")
+    
     # get token to use in password hash
     if (token := get_router_token( s=session, url=urls['login'])) is not None:
     
         # authenticate to access diag status page
         if login_session( s=session, url=urls['post'], password=password, token=token):
 
+            # loop, if single-shot break, else sleep and re-query
             while True:
                 # get current stats
                 signal_diags = query_page( s=session, url=urls['diag'], fields=diag_fields )
