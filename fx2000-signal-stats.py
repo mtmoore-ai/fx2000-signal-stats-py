@@ -7,35 +7,6 @@ import requests
 import sys
 import time
 
-# IP address of router interface to login to
-router_ip  = "192.168.1.1"
-
-# time to wait between queries in seconds
-query_wait = 30
-
-# set the username and password in the environment instead of hard-coding
-# abort if not set, you really want these
-username = os.environ.get("USER")
-password = os.environ.get("PASS")
-
-# URLs to use
-urls = { 
-         "login": f"http://{router_ip}/login/",
-         "post":  f"http://{router_ip}/submitLogin/",
-         "diag":  f"http://{router_ip}/diagnostics/",
-       }
-
-# ids of fields to scrape from the HTML
-diag_fields = [
-               "internetStatus4G", 
-               "internetStatusTech", 
-               "band", 
-               "bandwidth", 
-               "internetStatusNetworkOperator4G", 
-               "internetStatus4gRSSI", 
-               "internetStatusSNR" 
-              ]
-
 def get_router_token( s: requests.Session, url: str ) -> str:
     """
     query the login page of the router (u) and regex out the gSecureToken value
@@ -119,7 +90,7 @@ def query_page( s: requests.Session, url:str, fields: list[str] ) -> dict[str, s
 
     return return_fields
 
-def auth_session( url_auth: str, url_post: str, user: str, password: str) -> requests.Session:
+def auth_session( url_auth: str, url_post: str, password: str) -> requests.Session:
     """ get the necessary token and post the password+token hash
         return the session associated with an authenticated session or None
     """
@@ -154,13 +125,12 @@ if __name__ == "__main__":
     # IP address of router interface to login to
     router_ip  = "192.168.1.1"
 
-    # set the username and password in the environment instead of hard-coding
+    # set the password in the environment instead of hard-coding
     # abort if not set, you really want these
-    username = os.environ.get("USER", None)
     password = os.environ.get("PASS", None)
 
-    if username is None or password is None:
-        print(f"USER and PASS environment variables must be set for admin authentication")
+    if password is None:
+        print(f"PASS environment variables must be set for admin authentication")
         exit()
 
     # URLs to use
@@ -170,6 +140,18 @@ if __name__ == "__main__":
             "diag":  f"http://{router_ip}/diagnostics/",
            }
 
+    # ids of fields to scrape from the HTML
+    diag_fields = [
+                   "internetStatus4G", 
+                    "internetStatusTech", 
+                    "band",  
+                    "bandwidth", 
+                    "internetStatusNetworkOperator4G", 
+                    "internetStatus4gRSSI",
+                    "internetStatusSNR"
+                   ]
+
+
     # redirect output to specified log file if it's not stdout
     log_out = sys.stdout
     if hasattr(args, "log"):
@@ -178,8 +160,7 @@ if __name__ == "__main__":
     print(f"time,{",".join(diag_fields)}", file=log_out)
    
     # start initial session
-    session = auth_session( url_auth=urls['login'], url_post=urls['post'], 
-                            user=username, password=password)
+    session = auth_session( url_auth=urls['login'], url_post=urls['post'], password=password)
 
     # loop, if single-shot break, else sleep and re-query, track count of re-tries
     err_retries = 0
@@ -190,8 +171,7 @@ if __name__ == "__main__":
 
         # attempt to re-create session if failure getting page details
         if signal_diags is None:
-            session = auth_session( url_auth=urls['login'], url_post=urls['post'], 
-                                    user=username, password=password)
+            session = auth_session( url_auth=urls['login'], url_post=urls['post'], password=password)
             err_retries += 1
         else:
             err_retries = 0
