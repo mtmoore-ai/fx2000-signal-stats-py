@@ -7,9 +7,9 @@ import requests
 import sys
 import time
 
-def get_router_token( s: requests.Session, url: str ) -> str:
+def get_fx2000_token( s: requests.Session, url: str ) -> str:
     """
-    query the login page of the router (u) and regex out the gSecureToken value
+    query the login page of the fx2000 (url) and regex out the gSecureToken value
 
     return: value of token (str) or None if not found
     """
@@ -34,7 +34,7 @@ def get_router_token( s: requests.Session, url: str ) -> str:
 def login_session( s: requests.Session, url: str, password: str, token: str) -> bool:
     """
     using the existing session s, post the SHA1 hash of the password and token
-    to the router at url to authenticate the session as admin
+    to the fx2000 at url to authenticate the session as admin
 
     return: True on success, else False
     """
@@ -96,7 +96,7 @@ def auth_session( url_auth: str, url_post: str, password: str) -> requests.Sessi
     """
     # get token to use in password hash
     session = requests.Session()
-    if (token := get_router_token( s=session, url=url_auth)) is not None:
+    if (token := get_fx2000_token( s=session, url=url_auth)) is not None:
     
         # authenticate to access diag status page
         if login_session( s=session, url=url_post, password=password, token=token):
@@ -112,18 +112,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='fx2000-signal-stats',
                                      description='Report the signal stats from an Inseego FX2000 Wavemaker',)
 
-    parser.add_argument('-l', '--loop', action='store_true', 
-                        help='Loop over status checks, otherwise one-shot')
     parser.add_argument('-d', '--delay', type=int, default=60, 
                         help='Delay between queries when looping')
     parser.add_argument('-f', '--log', type=argparse.FileType('a'), 
                         help='Output status to log instead of stdout, append if file exists')
+    parser.add_argument('-i', '--ip', type=str, default="192.168.1.1", 
+                        help='IP address of the FX2000 HTTP interface')
+    parser.add_argument('-l', '--loop', action='store_true', 
+                        help='Loop over status checks, otherwise one-shot')
     parser.add_argument('-r', '--retries', type=int, default=4, 
                         help='Number of retries if GET or POST errors')
     args = parser.parse_args()
-
-    # IP address of router interface to login to
-    router_ip  = "192.168.1.1"
 
     # set the password in the environment instead of hard-coding
     # abort if not set, you really want these
@@ -135,9 +134,9 @@ if __name__ == "__main__":
 
     # URLs to use
     urls = { 
-            "login": f"http://{router_ip}/login/",
-            "post":  f"http://{router_ip}/submitLogin/",
-            "diag":  f"http://{router_ip}/diagnostics/",
+            "login": f"http://{args.ip}/login/",
+            "post":  f"http://{args.ip}/submitLogin/",
+            "diag":  f"http://{args.ip}/diagnostics/",
            }
 
     # ids of fields to scrape from the HTML
@@ -154,7 +153,7 @@ if __name__ == "__main__":
 
     # redirect output to specified log file if it's not stdout
     log_out = sys.stdout
-    if hasattr(args, "log"):
+    if hasattr(args, "log") and args.log is not None:
         log_out = args.log
 
     print(f"time,{",".join(diag_fields)}", file=log_out)
@@ -176,7 +175,7 @@ if __name__ == "__main__":
         else:
             err_retries = 0
 
-        status_line = time.time()
+        status_line = f"{time.time():.4f}"
         for k in diag_fields:
             v = signal_diags[k] if k in signal_diags else ""
             status_line = f"{status_line},\"{v}\""
