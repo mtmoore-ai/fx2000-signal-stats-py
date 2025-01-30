@@ -21,7 +21,7 @@ options:
 The password to access admin pages is retrieved from the environment variable PASS to avoid hard-coding the password in the script.
 
 ## FX2000 IP
-The default IP is 192.168.1.1, a different IP can be specified via the ``--ip`` argument
+The default IP used is 192.168.1.1, a different IP can be specified via the ``--ip`` argument
 
 ## Output
 Currently, output is in CSV format with retrieved fields prefixed by the current epoch.
